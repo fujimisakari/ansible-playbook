@@ -1,0 +1,161 @@
+# http://kiririmode.hatenablog.jp/entry/20150101/1420074034
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  sudo: no
+  vars:
+    homebrew_taps:
+      - caskroom/cask
+      - homebrew/dupes
+      - sanemat/font
+    homebrew_packages:
+      - { name: zsh, install_options: disable-etcdir }
+      - { name: hub }
+      - { name: keychain }
+      - { name: boxes }
+      - { name: nkf }
+      - { name: tig }
+      - { name: wget }
+      - { name: watch }
+      - { name: tree }
+      - { name: pstree }
+      - { name: psgrep }
+      - { name: psutils }
+      - { name: imagemagick }
+      - { name: screen, install_options: HEAD }
+      - { name: the_silver_searcher }
+      - { name: lv }
+      - { name: ngrep }
+      - { name: pidof }
+      - { name: swftools }
+      - { name: gnupg }
+      - { name: gpg }
+      - { name: ghostscript }
+      - { name: readline }
+      - { name: gettext }
+      # 言語
+      - { name: python }
+      - { name: go }
+      - { name: ruby }
+      - { name: ansible }
+      - { name: markdown }
+      # DB
+      - { name: mysql }
+      - { name: sqlite }
+      - { name: memcached }
+      - { name: redis }
+      # バージョン管理
+      - { name: git }
+      - { name: mercurial }
+      - { name: subversion }
+      - { name: cvs }
+      # emacs
+      - { name: emacs, install_options: [with-cocoa,HEAD] }
+      - { name: global, install_options: [with-exuberant-ctags, with-pygments] }
+      - { name: ctags }
+      - { name: sary }
+      - { name: cmigemo }
+      - { name: offline-imap }
+      - { name: w3m }
+      - { name: ispell }
+      - { name: aspell }
+      # gnuコマンド
+      - { name: coreutils }
+      - { name: binutils }
+      - { name: findutils }
+      # java
+      - { name: ant }
+      # lisp
+      - { name: clisp }
+      - { name: clozure-cl }
+      - { name: sbcl }
+      # objecitve-c
+      - { name: clang-format }
+    homebrew_cask_packages:
+      - { name: google-chrome }
+      - { name: alfred }
+      - { name: bettertouchtool }
+      - { name: karabiner }
+      - { name: adobe-reader }
+      - { name: java }
+      - { name: eclipse-java }
+      - { name: kobito }
+      - { name: slack }
+      - { name: skype }
+      - { name: hipchat }
+      - { name: appcleaner }
+      - { name: vlc }
+    pip_packages:
+      - ipython
+      - ipdb
+      - six
+      - percol
+      - pyflakes
+      - Pygments
+      - Pylint
+      - pep8
+      - autopep8
+      - readline
+  tasks:
+    # brew tap
+    - name: homebrew の tap リポジトリを追加
+      homebrew_tap: tap={{ item }} state=present
+      with_items: homebrew_taps
+
+    # brew update
+    - name: homebrew を最新版にする
+      homebrew: update_homebrew=yes
+
+    # brew
+    - name: brewでパッケージをインストール
+      homebrew: >
+        name={{ item.name }}
+        state={{ item.state | default('latest') }}
+        install_options={{
+          item.install_options | default() | join(',')
+          if item.install_options is not string
+          else item.install_options
+        }}
+      with_items: homebrew_packages
+      register: brew_result
+    - name: brew パッケージの情報保存先ディレクトリを作成
+      file: path=brew_info state=directory
+    - name: brew パッケージの情報を保存
+      shell: brew info {{ item }} > brew_info/{{ item }}
+      with_items: brew_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
+
+    # brew cask
+    - name: brew cask をインストール
+      homebrew: name=brew-cask state=latest
+    - name: brew cask でパッケージをインストール
+      homebrew_cask: name={{ item.name }} state={{ item.state|default('installed') }}
+      with_items: homebrew_cask_packages
+      register: cask_result
+    - name: cask パッケージの情報保存先ディレクトリを作成
+      file: path=cask_info state=directory
+    - name: cask パッケージの情報を保存
+      shell: brew cask info {{ item }} > cask_info/{{ item }}
+      with_items: cask_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
+
+    # Ricty
+    - name: xquartz のインストール (for Ricty)
+      homebrew_cask: name=xquartz
+    - name: fontforge のインストール (for Ricty)
+      homebrew: name=fontforge
+    - name: brew install ricty
+      homebrew: name=ricty
+    - name: 生成されたフォントファイルをコピー
+      shell: cp -f $(brew --cellar ricty)/*/share/fonts/Ricty*.ttf ~/Library/Fonts/
+      args:
+        creates: ~/Library/Fonts/Ricty-Bold.ttf
+      notify: run fc-cache
+
+    # pip
+    - name: pip でパッケージをインストール
+      pip: name={{ item }}
+      with_items: pip_packages
+
+  handlers:
+    - name: run fc-cache
+      shell: fc-cache -vf
