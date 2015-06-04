@@ -51,7 +51,7 @@
       - { name: subversion }
       - { name: cvs }
       # emacs
-      - { name: emacs, install_options: [with-cocoa,HEAD] }
+      - { name: emacs, install_options: with-cocoa }
       - { name: global, install_options: [with-exuberant-ctags, with-pygments] }
       - { name: ctags }
       - { name: sary }
@@ -72,6 +72,8 @@
       - { name: sbcl }
       # objecitve-c
       - { name: clang-format }
+      # csharp
+      - { name: mono }
     homebrew_cask_packages:
       - { name: google-chrome }
       - { name: alfred }
