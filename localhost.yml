@@ -99,6 +99,7 @@
       - pep8
       - autopep8
       - readline
+      - SpreadsheetConverter
   tasks:
     # brew tap
     - name: homebrew の tap リポジトリを追加
